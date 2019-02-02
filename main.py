@@ -1,7 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 
-NUM_EPISODES = 2000
+NUM_EPISODES = 10000
 TEST_EPISODES = 20
 
 
@@ -26,6 +26,7 @@ class Env:
 
     board = []
     available_actions = []
+    player_began_last = False
 
     def reset(self):
         self.available_actions = []
@@ -37,8 +38,11 @@ class Env:
                 self.board[row].append(self.NA)
                 self.available_actions.append((row, col))
 
-        if random.randint(0, 1) == 1:
+        if self.player_began_last:
             env.play_opponents_move()
+            self.player_began_last = False
+        else:
+            self.player_began_last = True
 
         return self.board
 
@@ -46,9 +50,12 @@ class Env:
         flat_board = [item for sublist in self.board for item in sublist]
         return ''.join(flat_board)
 
-    def step(self, _action):
+    def step(self, _action, _render=False):
 
         self._play_on_field(_action, self.X)
+
+        if _render:
+            self.render()
 
         _reward = 0
         occurrences = self.get_win_line_occurrences(self.X)
@@ -63,7 +70,7 @@ class Env:
                 _reward = -1
             else:
                 self.play_opponents_move()
-
+                occurrences = self.get_win_line_occurrences(self.X)
                 for win_line_n, occ_data in occurrences.items():
                     if len(occ_data[self.O]) == 3:
                         _reward = -2
@@ -73,6 +80,9 @@ class Env:
                     _reward = -1
 
         _is_done = True if _reward != 0 else False
+
+        if _render:
+            self.render()
 
         return _reward, _is_done
 
@@ -85,6 +95,11 @@ class Env:
 
     def play_opponents_move(self):
         occurrences = self.get_win_line_occurrences(self.O)
+        # win if it's possible
+        for win_line_n, occ_data in occurrences.items():
+            if len(occ_data[self.O]) == 2 and len(occ_data[self.NA]) == 1:
+                play_field = occ_data[self.NA][0]
+                return self._play_on_field(play_field, self.O)
         # block player
         for win_line_n, occ_data in occurrences.items():
             if len(occ_data[self.X]) == 2 and len(occ_data[self.NA]) == 1:
@@ -141,7 +156,7 @@ class Agent:
     epsilon = START_EPSILON
     q_map = {}
 
-    def play_episode(self, _env: Env):
+    def play_episode(self, _env: Env, _render=False):
 
         if random.randint(0, 1000)/1000 > self.epsilon:
             _action = self.choose_best_action(_env)
@@ -150,7 +165,7 @@ class Agent:
 
         self.q_history.append((_env.observe(), _action))
 
-        _reward, _is_done = _env.step(_action)
+        _reward, _is_done = _env.step(_action, render)
 
         if _is_done:
             self.update_q_vals(_env, _reward)
@@ -201,7 +216,12 @@ if __name__ == "__main__":
         env.reset()
 
         while True:
-            reward, is_done = agent.play_episode(env)
+
+            render = False
+            if i > NUM_EPISODES-10:
+                render = True
+
+            reward, is_done = agent.play_episode(env, render)
 
             if is_done:
                 total_reward += reward
@@ -213,9 +233,9 @@ if __name__ == "__main__":
 
         if i % TEST_EPISODES == 0:
             mean_reward = total_reward/count_episodes
-            print('episode: %i, mean reward: %f.3' % (i, mean_reward))
+            # print('episode: %i, mean reward: %f.3' % (i, mean_reward))
             mean_rewards.append(mean_reward)
-            env.render()
+            # env.render()
             total_reward = 0
             count_episodes = 0
 
