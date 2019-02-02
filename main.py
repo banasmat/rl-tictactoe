@@ -1,6 +1,9 @@
 import random
+import matplotlib.pyplot as plt
 
-NUM_EPISODES = 10
+NUM_EPISODES = 2000
+TEST_EPISODES = 20
+
 
 class Env:
 
@@ -22,12 +25,10 @@ class Env:
     ]
 
     board = []
-    state_history = []
     available_actions = []
 
     def reset(self):
         self.available_actions = []
-        self.state_history = []
         self.board = []
 
         for row in range(self.ROWS):
@@ -41,10 +42,13 @@ class Env:
 
         return self.board
 
+    def observe(self):
+        flat_board = [item for sublist in self.board for item in sublist]
+        return ''.join(flat_board)
+
     def step(self, _action):
 
         self._play_on_field(_action, self.X)
-        self.state_history.append(self.board)
 
         _reward = 0
         occurrences = self.get_win_line_occurrences(self.X)
@@ -54,22 +58,23 @@ class Env:
                 _reward = 1
                 break
 
-        if len(self.available_actions) == 0:
-            _reward = -1
-        else:
-            self.play_opponents_move()
-
-            for win_line_n, occ_data in occurrences.items():
-                if len(occ_data[self.O]) == 3:
-                    _reward = -2
-                    break
-
+        if _reward == 0:
             if len(self.available_actions) == 0:
                 _reward = -1
+            else:
+                self.play_opponents_move()
+
+                for win_line_n, occ_data in occurrences.items():
+                    if len(occ_data[self.O]) == 3:
+                        _reward = -2
+                        break
+
+                if len(self.available_actions) == 0:
+                    _reward = -1
 
         _is_done = True if _reward != 0 else False
 
-        return _reward, self.board, _is_done
+        return _reward, _is_done
 
     def _play_on_field(self, field, symbol):
         if self.board[field[0]][field[1]] != self.NA:
@@ -125,29 +130,94 @@ class Env:
         print()
 
 
-env = Env()
-count_episodes = 0
-total_reward = 0
+class Agent:
 
-for i in range(0, NUM_EPISODES):
+    GAMMA = 0.9
+    START_EPSILON = 1.0
+    END_EPSILON = 0.2
+    EPSILON_DECAY = 0.001
 
-    env.reset()
-    count_episodes += 1
+    q_history = []
+    epsilon = START_EPSILON
+    q_map = {}
 
-    # while True:
-    for j in range(0, 9):
-        action = env.sample_action()
+    def play_episode(self, _env: Env):
 
-        reward, next_state, is_done = env.step(action)
+        if random.randint(0, 1000)/1000 > self.epsilon:
+            _action = self.choose_best_action(_env)
+        else:
+            _action = _env.sample_action()
 
-        if is_done:
-            total_reward += reward
+        self.q_history.append((_env.observe(), _action))
 
-            print('episode: %i, total reward: %i' % (i, total_reward))
+        _reward, _is_done = _env.step(_action)
+
+        if _is_done:
+            self.update_q_vals(_env, _reward)
+            self.q_history = []
+
+        self.epsilon -= self.EPSILON_DECAY
+
+        return _reward, _is_done
+
+    def choose_best_action(self, _env: Env):
+        _state = _env.observe()
+
+        q_vals = {}
+        for act in env.available_actions:
+            if (_state, act) not in self.q_map:
+                self.q_map[_state, act] = 0.0
+            q_vals[act] = self.q_map[_state, act]
+
+        max_acts = []
+        for _act, val in q_vals.items():
+            if val == max(q_vals.values()):
+                max_acts.append(_act)
+
+        return random.choice(max_acts)
+
+    def update_q_vals(self, _env, _reward):
+
+        prev_val = _reward
+
+        for _state, _action in reversed(self.q_history):
+
+            if (_state, _action) not in self.q_map:
+                self.q_map[_state, _action] = 0.0
+            else:
+                self.q_map[_state, _action] = self.GAMMA * prev_val + self.q_map[_state, _action]
+                prev_val = self.q_map[_state, _action]
+
+
+if __name__ == "__main__":
+    env = Env()
+    agent = Agent()
+    count_episodes = 0
+    total_reward = 0
+    mean_rewards = []
+
+    for i in range(0, NUM_EPISODES):
+
+        env.reset()
+
+        while True:
+            reward, is_done = agent.play_episode(env)
+
+            if is_done:
+                total_reward += reward
+                count_episodes += 1
+
+                # print('episode: %i, total reward: %i' % (i, total_reward))
+                # env.render()
+                break
+
+        if i % TEST_EPISODES == 0:
+            mean_reward = total_reward/count_episodes
+            print('episode: %i, mean reward: %f.3' % (i, mean_reward))
+            mean_rewards.append(mean_reward)
             env.render()
-            break
+            total_reward = 0
+            count_episodes = 0
 
-    # if i % 10 == 0:
-    #     print('episode: %i, total reward: %i' % (i, total_reward))
-    #     env.render()
-
+    plt.plot(mean_rewards)
+    plt.show()
