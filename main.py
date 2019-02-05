@@ -76,7 +76,7 @@ class Env:
                         _reward = -2
                         break
 
-                if len(self.available_actions) == 0:
+                if _reward == 0 and len(self.available_actions) == 0:
                     _reward = -1
 
         _is_done = True if _reward != 0 else False
@@ -199,9 +199,9 @@ class Agent:
 
             if (_state, _action) not in self.q_map:
                 self.q_map[_state, _action] = 0.0
-            else:
-                self.q_map[_state, _action] = self.GAMMA * prev_val + self.q_map[_state, _action]
-                prev_val = self.q_map[_state, _action]
+
+            self.q_map[_state, _action] = 0.8 * self.q_map[_state, _action] + 0.2 * self.GAMMA * prev_val
+            prev_val = self.q_map[_state, _action]
 
 
 if __name__ == "__main__":
@@ -238,6 +238,11 @@ if __name__ == "__main__":
             # env.render()
             total_reward = 0
             count_episodes = 0
+
+    # for st, act in agent.q_map:
+    #     if st == 'o-ox-----':
+    #     # if st == 'o--------':
+    #         print(st, act, agent.q_map[st, act])
 
     plt.plot(mean_rewards)
     plt.show()
