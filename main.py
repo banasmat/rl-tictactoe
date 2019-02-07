@@ -1,7 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 
-NUM_EPISODES = 10000
+NUM_EPISODES = 100000
 TEST_EPISODES = 20
 
 
@@ -85,7 +85,7 @@ class Env:
         occurrences = self.get_win_line_occurrences(self.X)
 
         for win_line_n, occ_data in occurrences.items():
-            if len(occ_data[self.X]) == 3:
+            if len(occ_data[self.X]) == self.size:
                 _reward = 1
                 break
 
@@ -96,7 +96,7 @@ class Env:
                 self.play_opponents_move()
                 occurrences = self.get_win_line_occurrences(self.X)
                 for win_line_n, occ_data in occurrences.items():
-                    if len(occ_data[self.O]) == 3:
+                    if len(occ_data[self.O]) == self.size:
                         _reward = -2
                         break
 
@@ -121,12 +121,12 @@ class Env:
         occurrences = self.get_win_line_occurrences(self.O)
         # win if it's possible
         for win_line_n, occ_data in occurrences.items():
-            if len(occ_data[self.O]) == 2 and len(occ_data[self.NA]) == 1:
+            if len(occ_data[self.O]) == self.size-1 and len(occ_data[self.NA]) == 1:
                 play_field = occ_data[self.NA][0]
                 return self._play_on_field(play_field, self.O)
         # block player
         for win_line_n, occ_data in occurrences.items():
-            if len(occ_data[self.X]) == 2 and len(occ_data[self.NA]) == 1:
+            if len(occ_data[self.X]) == self.size-1 and len(occ_data[self.NA]) == 1:
                 play_field = occ_data[self.NA][0]
                 return self._play_on_field(play_field, self.O)
         # continue building row
@@ -136,7 +136,7 @@ class Env:
                 return self._play_on_field(play_field, self.O)
         # start building new row
         for win_line_n, occ_data in occurrences.items():
-            if len(occ_data[self.NA]) == 3:
+            if len(occ_data[self.NA]) == self.size:
                 play_field = occ_data[self.NA][random.randint(0,2)]
                 return self._play_on_field(play_field, self.O)
         # if none of above is possible, play random
@@ -163,9 +163,8 @@ class Env:
         return random.choice(self.available_actions)
 
     def render(self):
-        print(self.board[0])
-        print(self.board[1])
-        print(self.board[2])
+        for row in self.board:
+            print(row)
         print()
 
 
@@ -229,7 +228,7 @@ class Agent:
 
 
 if __name__ == "__main__":
-    env = Env()
+    env = Env(4)
     agent = Agent()
     count_episodes = 0
     total_reward = 0
@@ -262,11 +261,6 @@ if __name__ == "__main__":
             # env.render()
             total_reward = 0
             count_episodes = 0
-
-    # for st, act in agent.q_map:
-    #     if st == 'o-ox-----':
-    #     # if st == 'o--------':
-    #         print(st, act, agent.q_map[st, act])
 
     plt.plot(mean_rewards)
     plt.show()
