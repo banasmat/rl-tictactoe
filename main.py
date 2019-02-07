@@ -11,30 +11,54 @@ class Env:
     O = 'o'
     NA = '-'
 
-    ROWS = 3
-    COLS = 3
-    WIN_LINES = [
-        ((0, 0), (0, 1), (0, 2)),
-        ((1, 0), (1, 1), (1, 2)),
-        ((2, 0), (2, 1), (2, 2)),
-        ((0, 0), (1, 0), (2, 0)),
-        ((0, 1), (1, 1), (2, 1)),
-        ((0, 2), (1, 2), (2, 2)),
-        ((0, 0), (1, 1), (2, 2)),
-        ((0, 2), (1, 1), (2, 0)),
-    ]
+    size = 3
+    win_lines = []
 
     board = []
     available_actions = []
     player_began_last = False
 
+    def __init__(self, size=3):
+        self.size = size
+        self.win_lines = self._create_win_lines(size)
+
+    def _create_win_lines(self, size):
+        win_lines = []
+
+        diagonal_win_line_1 = []
+        diagonal_win_line_2 = []
+        vertical_win_lines = {}
+
+        for row in range(0, size):
+            horizontal_win_line = []
+            for col in range(0, size):
+                horizontal_win_line.append((row, col))
+
+                if col not in vertical_win_lines:
+                    vertical_win_lines[col] = []
+                vertical_win_lines[col].append((row, col))
+                if len(vertical_win_lines[col]) == size:
+                    win_lines.append(vertical_win_lines[col])
+
+                if row == col:
+                    diagonal_win_line_1.append((row, col))
+                if row + col == size-1:
+                    diagonal_win_line_2.append((row, col))
+
+            win_lines.append(set(horizontal_win_line))
+
+        win_lines.append(set(diagonal_win_line_1))
+        win_lines.append(set(diagonal_win_line_2))
+
+        return win_lines
+
     def reset(self):
         self.available_actions = []
         self.board = []
 
-        for row in range(self.ROWS):
+        for row in range(self.size):
             self.board.append([])
-            for col in range(self.COLS):
+            for col in range(self.size):
                 self.board[row].append(self.NA)
                 self.available_actions.append((row, col))
 
@@ -122,7 +146,7 @@ class Env:
 
         occurrences = {}
 
-        for i, win_line in enumerate(self.WIN_LINES):
+        for i, win_line in enumerate(self.win_lines):
             occurrences[i] = {}
             occurrences[i][self.X] = []
             occurrences[i][self.O] = []
